@@ -371,7 +371,7 @@ async function write(action) {
     }
     c.hero_svg = d.hero_svg;
     c.brief = { ...(c.brief ?? {}), rationale: action === "graphic" ? c.brief?.rationale : d.rationale, hero_alt: d.hero_alt };
-    await save({ subject_options: c.subject_options, hero_svg: c.hero_svg, brief: c.brief, theme: c.theme });
+    await save({ subject_options: c.subject_options, subject: c.subject, preheader: c.preheader, blocks: c.blocks, hero_svg: c.hero_svg, brief: { ...c.brief, _products: ed.products }, theme: c.theme });
     await rerender({ regraphic: true });
     await sb.from("mkt_events").insert({ campaign_id: c.id, action: "generated", detail: { action } });
     toast(action === "graphic" ? "New graphic is in." : "Draft is ready for your review.");

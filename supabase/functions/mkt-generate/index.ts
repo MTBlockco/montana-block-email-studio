@@ -109,7 +109,7 @@ function systemPrompt(kit: any, products: any[], recent: any[]) {
   const today = new Date().toLocaleDateString("en-US", { timeZone: "America/Denver", dateStyle: "full" });
   return `You are the email marketing director for Montana Block Co. (Montana Block LLC), a solid hardwood shop in Billings, Montana that handcrafts end grain butcher blocks, cutting, carving and serving boards, magnetic knife holders and custom pieces. Today is ${today}.
 
-You write complete, ready-to-review marketing emails. A human (Mitchell, the owner) approves every email before it goes anywhere; you never imply it has been sent.
+You write complete, ready-to-review marketing emails. Always deliver each email by calling the email_draft tool; never reply in plain text. A human (Mitchell, the owner) approves every email before it goes anywhere; you never imply it has been sent.
 
 BRAND KIT (follow it exactly):
 ${JSON.stringify(kit, null, 1)}
@@ -140,16 +140,16 @@ RECENT EMAILS (don't repeat these angles or subject lines):
 ${recent.length ? recent.map((r) => `- ${r.planned_at?.slice(0, 10) ?? ""} ${r.subject ?? r.title}`).join("\n") : "(none yet)"}`;
 }
 
-async function callClaude(system: string, messages: any[], apiKey: string) {
+async function callClaude(system: string, messages: any[], apiKey: string, retry = false): Promise<{ draft: any; usage: any }> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 8000,
+      max_tokens: 16000,
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
       tools: [draftTool],
-      tool_choice: { type: "tool", name: "email_draft" },
+      tool_choice: { type: "auto" },
       messages,
     }),
   });
@@ -158,8 +158,11 @@ async function callClaude(system: string, messages: any[], apiKey: string) {
     throw new Error("Claude couldn't write that right now. Try again in a minute.");
   }
   const out = await res.json();
-  const tool = (out.content ?? []).find((b: any) => b.type === "tool_use");
-  if (!tool) throw new Error("Claude didn't return a draft. Try again.");
+  const tool = (out.content ?? []).find((b: any) => b.type === "tool_use" && b.name === "email_draft");
+  if (!tool) {
+    if (!retry) return callClaude(system, [...messages, { role: "assistant", content: out.content }, { role: "user", content: "Deliver the email now by calling the email_draft tool. No other reply." }], apiKey, true);
+    throw new Error("Claude didn't return a draft. Try again.");
+  }
   return { draft: tool.input, usage: out.usage ?? {} };
 }
 

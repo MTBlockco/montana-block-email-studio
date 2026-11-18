@@ -1,5 +1,5 @@
 // Email Studio service worker: installable app shell. Data and AI calls always go to the server live.
-const CACHE = "mb-email-v1";
+const CACHE = "mb-email-v2";
 const SHELL = ["./", "index.html", "app.js", "studio.css", "manifest.webmanifest", "icon.svg", "styles.css", "email.js", "config.js"];
 self.addEventListener("install", (e) => e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())));
 self.addEventListener("activate", (e) => e.waitUntil(
